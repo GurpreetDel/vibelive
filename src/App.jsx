@@ -4,6 +4,7 @@ import GoLive from './pages/GoLive.jsx'
 import Watch from './pages/Watch.jsx'
 import DemoRoom from './pages/DemoRoom.jsx'
 import Install from './pages/Install.jsx'
+import Privacy from './pages/Privacy.jsx'
 import { useDiamonds, topUpDiamonds } from './lib/balance.js'
 import { fmt } from './lib/util.js'
 
@@ -27,6 +28,7 @@ export default function App() {
   else if (page === 'watch') content = <Watch code={param} />
   else if (page === 'demo') content = <DemoRoom id={param} />
   else if (page === 'install') content = <Install />
+  else if (page === 'privacy') content = <Privacy />
   else content = <Discover />
 
   const inRoom = page === 'watch' || page === 'demo' || page === 'live'

@@ -65,6 +65,10 @@ export default function Install() {
         </div>
       </div>
 
+      <p className="privacy-link">
+        <a href="#/privacy">Privacy Policy</a>
+      </p>
+
       <div className="install-card install-tip">
         <h3>💡 Try this</h3>
         <p>

@@ -460,6 +460,13 @@ input::placeholder { color: var(--muted); }
 .install-card ol b, .install-card p b { color: var(--text); }
 .install-card p { color: var(--muted); font-size: 14px; line-height: 1.6; }
 .install-tip { margin-top: 16px; border-color: rgba(255, 45, 120, 0.35); }
+.privacy-link { margin: 18px 0 6px; }
+.privacy-link a { color: var(--muted); text-decoration: underline; font-size: 13.5px; }
+.privacy { text-align: left; }
+.privacy h1 { text-align: center; }
+.privacy-date { text-align: center; color: var(--muted); font-size: 13px; margin-bottom: 22px; }
+.privacy .install-card { margin-bottom: 14px; }
+.privacy .setup-back { display: block; text-align: center; }
 
 @media (min-width: 768px) {
   .grid { grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); }
