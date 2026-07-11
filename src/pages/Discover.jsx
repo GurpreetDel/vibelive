@@ -47,6 +47,7 @@ export default function Discover() {
             {t}
           </button>
         ))}
+        <a className="chip chip-explore" href="#/explore">🌍 190+ countries →</a>
       </div>
 
       <div className="grid">
@@ -56,7 +57,7 @@ export default function Discover() {
             <a key={s.id} className="card" href={`#/demo/${s.id}`}
                style={{ background: `linear-gradient(135deg, ${s.grad[0]}, ${s.grad[1]})` }}>
               <div className="card-top">
-                <span className="live-badge">● LIVE</span>
+                <span className="live-badge">● {s.g === 'F' ? "She's" : "He's"} LIVE</span>
                 <span className="viewers">👁 {fmt(viewers)}</span>
               </div>
               <div className="card-avatar">{s.avatar}</div>

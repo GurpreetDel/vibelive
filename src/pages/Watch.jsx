@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import Peer from 'peerjs'
 import { myName, colorFor } from '../lib/util.js'
-import { giftById } from '../data/demo.js'
+import { giftById, EPIC_GIFT_COST } from '../data/demo.js'
+import { addWatched } from '../lib/store.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
+import EpicGift from '../components/EpicGift.jsx'
 import RoomBottomBar from '../components/RoomBottomBar.jsx'
 
 export default function Watch({ code }) {
@@ -18,6 +20,7 @@ export default function Watch({ code }) {
   const [following, setFollowing] = useState(false)
   const [showGifts, setShowGifts] = useState(false)
   const [banner, setBanner] = useState(null)
+  const [epic, setEpic] = useState(null)
   const [input, setInput] = useState('')
   const { hearts, addHeart, burstHearts } = useHearts()
 
@@ -53,9 +56,7 @@ export default function Watch({ code }) {
         else if (d.t === 'gift') {
           const g = giftById(d.id)
           if (!g) return
-          setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from: d.name })
-          burstHearts(8, g.emoji)
-          setTimeout(() => setBanner(null), 2600)
+          showGift(g, d.name)
         } else if (d.t === 'end') setStatus('ended')
       })
       conn.on('close', () => setStatus((s) => (s === 'live' ? 'ended' : s)))
@@ -67,6 +68,7 @@ export default function Watch({ code }) {
         clearTimeout(timeout)
         if (videoRef.current) videoRef.current.srcObject = remote
         setStatus('live')
+        addWatched({ id: roomCode, name: `Room ${roomCode}`, avatar: '🎥', href: `#/watch/${roomCode}` })
         addMsg({ system: true, text: `You joined ${roomCode}. Say hi 👋` })
       })
     })
@@ -121,11 +123,20 @@ export default function Watch({ code }) {
 
   const send = (data) => connRef.current?.open && connRef.current.send(data)
 
+  const showGift = (g, from) => {
+    if (g.cost >= EPIC_GIFT_COST) {
+      setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from })
+      setTimeout(() => setEpic(null), 3200)
+    } else {
+      setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from })
+      setTimeout(() => setBanner(null), 2600)
+    }
+    burstHearts(8, g.emoji)
+  }
+
   const sendGift = (g) => {
     send({ t: 'gift', id: g.id, name })
-    setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from: name })
-    burstHearts(8, g.emoji)
-    setTimeout(() => setBanner(null), 2600)
+    showGift(g, name)
   }
 
   return (
@@ -159,6 +170,7 @@ export default function Watch({ code }) {
       )}
 
       <GiftBanner banner={banner} />
+      <EpicGift epic={epic} />
       <HeartsOverlay hearts={hearts} />
       <ChatList msgs={msgs} />
       <RoomBottomBar

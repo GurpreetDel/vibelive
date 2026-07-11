@@ -1,13 +1,12 @@
 import { GIFTS } from '../data/demo.js'
-import { useDiamonds, spendDiamonds, topUpDiamonds } from '../lib/balance.js'
+import { useStore, spendCoins, addCoins } from '../lib/store.js'
 import { fmt } from '../lib/util.js'
 
 export default function GiftTray({ onSend, onClose }) {
-  const diamonds = useDiamonds()
+  const { coins } = useStore()
 
   const send = (g) => {
-    if (diamonds < g.cost) return
-    spendDiamonds(g.cost)
+    if (!spendCoins(g.cost)) return
     onSend(g)
     onClose()
   }
@@ -18,20 +17,20 @@ export default function GiftTray({ onSend, onClose }) {
         <div className="gift-head">
           <b>Send a gift</b>
           <span className="gift-balance">
-            💎 {fmt(diamonds)}
-            <button className="topup" onClick={() => topUpDiamonds(1000)}>+1000 free</button>
+            🪙 {fmt(coins)}
+            <button className="topup" onClick={() => addCoins(1000)}>+1000 free</button>
           </span>
         </div>
-        <div className="gift-grid">
+        <div className="gift-grid gift-grid-scroll">
           {GIFTS.map((g) => (
             <button
               key={g.id}
-              className={diamonds < g.cost ? 'gift gift-locked' : 'gift'}
+              className={coins < g.cost ? 'gift gift-locked' : 'gift'}
               onClick={() => send(g)}
             >
               <span className="gift-emoji">{g.emoji}</span>
               <span className="gift-name">{g.name}</span>
-              <span className="gift-cost">💎{g.cost}</span>
+              <span className="gift-cost">🪙{fmt(g.cost)}</span>
             </button>
           ))}
         </div>

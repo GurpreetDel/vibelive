@@ -1,10 +1,12 @@
 import { useEffect, useRef, useState } from 'react'
 import Peer from 'peerjs'
 import { randCode, myName, setMyName, colorFor, watchUrl } from '../lib/util.js'
-import { giftById } from '../data/demo.js'
+import { giftById, EPIC_GIFT_COST } from '../data/demo.js'
+import { addBeans, update } from '../lib/store.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
+import EpicGift from '../components/EpicGift.jsx'
 import RoomBottomBar from '../components/RoomBottomBar.jsx'
 
 export default function GoLive() {
@@ -17,6 +19,7 @@ export default function GoLive() {
   const [peakViewers, setPeakViewers] = useState(0)
   const [msgs, setMsgs] = useState([])
   const [banner, setBanner] = useState(null)
+  const [epic, setEpic] = useState(null)
   const [micOn, setMicOn] = useState(true)
   const [camOn, setCamOn] = useState(true)
   const [copied, setCopied] = useState(false)
@@ -76,10 +79,16 @@ export default function GoLive() {
     } else if (d.t === 'gift') {
       const g = giftById(d.id)
       if (!g) return
-      setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from: d.name })
+      addBeans(g.cost) // streamer earns beans at full gift value
+      if (g.cost >= EPIC_GIFT_COST) {
+        setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from: d.name })
+        setTimeout(() => setEpic(null), 3200)
+      } else {
+        setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from: d.name })
+        setTimeout(() => setBanner(null), 2600)
+      }
       burstHearts(8, g.emoji)
       addMsg({ name: d.name, color: colorFor(d.name), text: `sent a ${g.name} ${g.emoji}` })
-      setTimeout(() => setBanner(null), 2600)
       broadcast(d, conn.peer)
     }
   }
@@ -127,6 +136,8 @@ export default function GoLive() {
 
   const endStream = () => {
     broadcast({ t: 'end' })
+    const mins = Math.max(1, Math.round((Date.now() - startedAt.current) / 60000))
+    update((s) => ({ liveMinutes: s.liveMinutes + mins }))
     setTimeout(() => {
       if (peerRef.current) peerRef.current.destroy()
       if (streamRef.current) streamRef.current.getTracks().forEach((t) => t.stop())
@@ -221,6 +232,7 @@ export default function GoLive() {
           </div>
 
           <GiftBanner banner={banner} />
+          <EpicGift epic={epic} />
           <HeartsOverlay hearts={hearts} />
           <ChatList msgs={msgs} />
           <RoomBottomBar

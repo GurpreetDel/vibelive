@@ -1,29 +1,45 @@
 import { useEffect, useRef, useState } from 'react'
-import { STREAMS, CHAT_USERS, CHAT_LINES } from '../data/demo.js'
+import { STREAMS, CHAT_USERS, CHAT_LINES, EPIC_GIFT_COST } from '../data/demo.js'
+import { generatedStreamer } from '../data/countries.js'
 import { fmt, colorFor, myName } from '../lib/util.js'
+import { useStore, toggleFollow, addWatched } from '../lib/store.js'
+import { itemById, rankById } from '../data/items.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
+import EpicGift from '../components/EpicGift.jsx'
 import RoomBottomBar from '../components/RoomBottomBar.jsx'
 
 const pick = (a) => a[Math.floor(Math.random() * a.length)]
 
 export default function DemoRoom({ id }) {
-  const s = STREAMS.find((x) => x.id === id)
+  const s = STREAMS.find((x) => x.id === id) || generatedStreamer(id)
+  const store = useStore()
   const [msgs, setMsgs] = useState([])
   const [viewers, setViewers] = useState(s ? s.viewers : 0)
-  const [following, setFollowing] = useState(false)
   const [showGifts, setShowGifts] = useState(false)
   const [banner, setBanner] = useState(null)
+  const [epic, setEpic] = useState(null)
   const { hearts, addHeart, burstHearts } = useHearts()
   const msgId = useRef(0)
+  const following = store.following.includes(id)
 
   const addMsg = (m) => setMsgs((prev) => [...prev.slice(-60), { ...m, id: msgId.current++ }])
 
   useEffect(() => {
     if (!s) return
+    addWatched({ id: s.id, name: s.name, avatar: s.avatar })
     addMsg({ system: true, text: `Welcome to ${s.name}'s room! Be kind and say hi 👋` })
+
+    // Your equipped entry effect / rank announce your arrival, Bigo-style
+    const entry = itemById(store.equipped.entry)
+    const car = itemById(store.equipped.car)
+    const rank = store.rank ? rankById(store.rank) : null
+    const me = myName()
+    if (rank) addMsg({ system: true, text: `${rank.emoji} ${rank.name} ${me} has entered the room!` })
+    if (entry) addMsg({ system: true, text: `${entry.emoji} ${me} enters with ${entry.name}!` })
+    if (car) addMsg({ system: true, text: `${car.emoji} ${me} arrives in a ${car.name}!` })
 
     let alive = true
     const chatLoop = () => {
@@ -49,10 +65,16 @@ export default function DemoRoom({ id }) {
   }
 
   const sendGift = (g) => {
-    setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from: myName() })
+    const from = myName()
+    if (g.cost >= EPIC_GIFT_COST) {
+      setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from })
+      setTimeout(() => setEpic(null), 3200)
+    } else {
+      setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from })
+      setTimeout(() => setBanner(null), 2600)
+    }
     burstHearts(8, g.emoji)
-    addMsg({ name: myName(), color: '#ffd24d', text: `sent a ${g.name} ${g.emoji}` })
-    setTimeout(() => setBanner(null), 2600)
+    addMsg({ name: from, color: '#ffd24d', text: `sent a ${g.name} ${g.emoji}` })
   }
 
   return (
@@ -71,15 +93,16 @@ export default function DemoRoom({ id }) {
             <b>{s.name} {s.country}</b>
             <small>👁 {fmt(viewers)} watching</small>
           </span>
-          <button className={following ? 'follow following' : 'follow'} onClick={() => setFollowing(!following)}>
+          <button className={following ? 'follow following' : 'follow'} onClick={() => toggleFollow(id)}>
             {following ? '✓ Following' : '+ Follow'}
           </button>
         </div>
         <a className="room-close" href="#/">✕</a>
       </div>
 
-      <span className="live-badge room-live">● LIVE</span>
+      <span className="live-badge room-live">● {s.g === 'F' ? "She's" : "He's"} LIVE</span>
       <GiftBanner banner={banner} />
+      <EpicGift epic={epic} />
       <HeartsOverlay hearts={hearts} />
       <ChatList msgs={msgs} />
       <RoomBottomBar
