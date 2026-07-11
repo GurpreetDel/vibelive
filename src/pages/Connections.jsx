@@ -1,16 +1,10 @@
 import { useStore, toggleFollow, toggleGroup } from '../lib/store.js'
-import { STREAMS } from '../data/demo.js'
+import { STREAMS, FRIENDS } from '../data/demo.js'
 import { generatedStreamer } from '../data/countries.js'
 import { fmt } from '../lib/util.js'
 import { PageHead } from './Backpack.jsx'
 
 const TABS = ['friends', 'following', 'followers', 'groups']
-
-const FRIENDS = [
-  ['Priya', '👧', 22], ['Rahul', '🧑', 35], ['Sana', '👩', 18], ['Dev', '👨', 41],
-  ['Tanya', '👱‍♀️', 27], ['Ali', '🧔', 30], ['Mia', '👩‍🦰', 15], ['Karan', '👨‍🦱', 38],
-  ['Noor', '🧕', 24], ['Leo', '👦', 12], ['Jenny', '💁‍♀️', 45], ['Vik', '🕺', 29],
-]
 const FOLLOWERS = [
   ['StarGazer99', '🌟', 8], ['DanceQueen', '💃', 33], ['MusicLover', '🎧', 21], ['Foodie_Sam', '🍜', 17],
   ['NightOwl', '🦉', 26], ['GamerX', '🎮', 39], ['SunnyDay', '🌞', 14], ['CricketFan', '🏏', 31],
@@ -45,10 +39,10 @@ export default function Connections({ tab }) {
 
       <div className="list">
         {active === 'friends' &&
-          FRIENDS.map(([name, avatar, lv]) => (
-            <div key={name} className="list-row">
-              <span className="list-ico conv-avatar">{avatar}</span>
-              <span className="list-main"><b>{name}</b><small>Lv{lv} · mutual follow</small></span>
+          FRIENDS.map((f) => (
+            <div key={f.name} className="list-row">
+              <span className="list-ico conv-avatar">{f.avatar}</span>
+              <span className="list-main"><b>{f.name}</b><small>Lv{f.lv} · mutual follow</small></span>
               <a className="list-btn" href="#/inbox">💬 Chat</a>
             </div>
           ))}

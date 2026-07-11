@@ -9,7 +9,7 @@ export default function ChatList({ msgs }) {
   return (
     <div className="chatlist" ref={ref}>
       {msgs.map((m) => (
-        <div key={m.id} className={m.system ? 'msg msg-system' : 'msg'}>
+        <div key={m.id} className={m.entry ? 'msg msg-system msg-entry' : m.system ? 'msg msg-system' : 'msg'}>
           {m.system ? (
             <span>{m.text}</span>
           ) : (

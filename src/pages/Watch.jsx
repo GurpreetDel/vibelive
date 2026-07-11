@@ -1,26 +1,34 @@
 import { useEffect, useRef, useState } from 'react'
 import Peer from 'peerjs'
 import { myName, colorFor } from '../lib/util.js'
-import { giftById, EPIC_GIFT_COST } from '../data/demo.js'
-import { addWatched } from '../lib/store.js'
+import { giftById, EPIC_GIFT_COST, MYTHIC_GIFT_COST } from '../data/demo.js'
+import { addWatched, useStore } from '../lib/store.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
 import EpicGift from '../components/EpicGift.jsx'
+import ShareSheet from '../components/ShareSheet.jsx'
+import Marquee from '../components/Marquee.jsx'
+import { PKBar, PKResult } from '../components/PK.jsx'
 import RoomBottomBar from '../components/RoomBottomBar.jsx'
 
 export default function Watch({ code }) {
   const roomCode = (code || '').toUpperCase()
-  const [status, setStatus] = useState('connecting') // connecting | live | notfound | ended | error
+  const store = useStore()
+  const [status, setStatus] = useState('connecting')
   const [host, setHost] = useState({ name: 'Host', title: '' })
   const [viewers, setViewers] = useState(1)
   const [msgs, setMsgs] = useState([])
   const [muted, setMuted] = useState(true)
   const [following, setFollowing] = useState(false)
   const [showGifts, setShowGifts] = useState(false)
+  const [showShare, setShowShare] = useState(false)
   const [banner, setBanner] = useState(null)
   const [epic, setEpic] = useState(null)
+  const [marqueeEvent, setMarqueeEvent] = useState(null)
+  const [pk, setPk] = useState(null)
+  const [pkResult, setPkResult] = useState(null)
   const [input, setInput] = useState('')
   const { hearts, addHeart, burstHearts } = useHearts()
 
@@ -31,6 +39,19 @@ export default function Watch({ code }) {
   const name = myName()
 
   const addMsg = (m) => setMsgs((prev) => [...prev.slice(-60), { ...m, id: msgId.current++ }])
+
+  const showGiftAnim = (g, from, count = 1) => {
+    const tier = g.cost >= MYTHIC_GIFT_COST ? 'mythic' : g.cost >= EPIC_GIFT_COST ? 'epic' : null
+    if (tier) {
+      setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from, tier, count })
+      setTimeout(() => setEpic(null), tier === 'mythic' ? 4600 : 3200)
+    } else {
+      setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from })
+      setTimeout(() => setBanner(null), 2600)
+    }
+    burstHearts(Math.min(14, 6 + count), g.emoji)
+    setMarqueeEvent({ id: Math.random(), text: `${g.emoji} ${from} sent ${count > 1 ? count + '× ' : ''}${g.name}!` })
+  }
 
   useEffect(() => {
     if (!roomCode) return
@@ -56,14 +77,25 @@ export default function Watch({ code }) {
         else if (d.t === 'gift') {
           const g = giftById(d.id)
           if (!g) return
-          showGift(g, d.name)
+          const n = Math.max(1, Math.min(99, d.n || 1))
+          showGiftAnim(g, d.name, n)
+          addMsg({ name: d.name, color: colorFor(d.name), text: `sent ${n > 1 ? n + '× ' : ''}${g.name} ${g.emoji}` })
+        } else if (d.t === 'pk-start') {
+          setPk({ enemy: d.enemy, a: 0, b: 0, sec: d.sec, phase: 'battle' })
+          addMsg({ system: true, text: `⚔️ PK battle vs ${d.enemy.name}! Send gifts to power our streamer!` })
+        } else if (d.t === 'pk') {
+          setPk((p) => (p ? { ...p, a: d.a, b: d.b, sec: d.sec } : p))
+        } else if (d.t === 'pk-end') {
+          setPk(null)
+          setPkResult({ won: d.won, enemy: d.enemy, punishment: d.punishment })
+          setTimeout(() => setPkResult(null), 5200)
         } else if (d.t === 'end') setStatus('ended')
       })
       conn.on('close', () => setStatus((s) => (s === 'live' ? 'ended' : s)))
     })
 
     peer.on('call', (call) => {
-      call.answer() // viewer receives only
+      call.answer()
       call.on('stream', (remote) => {
         clearTimeout(timeout)
         if (videoRef.current) videoRef.current.srcObject = remote
@@ -123,24 +155,16 @@ export default function Watch({ code }) {
 
   const send = (data) => connRef.current?.open && connRef.current.send(data)
 
-  const showGift = (g, from) => {
-    if (g.cost >= EPIC_GIFT_COST) {
-      setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from })
-      setTimeout(() => setEpic(null), 3200)
-    } else {
-      setBanner({ key: Date.now(), emoji: g.emoji, name: g.name, from })
-      setTimeout(() => setBanner(null), 2600)
-    }
-    burstHearts(8, g.emoji)
+  const sendGift = (g, count = 1) => {
+    send({ t: 'gift', id: g.id, name, n: count })
+    showGiftAnim(g, name, count)
+    addMsg({ name, color: '#ffd24d', text: `sent ${count > 1 ? count + '× ' : ''}${g.name} ${g.emoji}` })
   }
 
-  const sendGift = (g) => {
-    send({ t: 'gift', id: g.id, name })
-    showGift(g, name)
-  }
+  const shareUrl = `${location.origin}${location.pathname}#/watch/${roomCode}`
 
   return (
-    <div className="room">
+    <div className="room room-v2">
       <video ref={videoRef} className="room-video" autoPlay playsInline muted={muted} />
 
       {status === 'connecting' && (
@@ -158,16 +182,27 @@ export default function Watch({ code }) {
             <small>👁 {viewers} watching{host.title ? ` · ${host.title}` : ''}</small>
           </span>
           <button className={following ? 'follow following' : 'follow'} onClick={() => setFollowing(!following)}>
-            {following ? '✓ Following' : '+ Follow'}
+            {following ? '✓' : '+ Follow'}
           </button>
         </div>
-        <a className="room-close" href="#/">✕</a>
+        <div className="top-right">
+          <a className="room-close" href="#/">✕</a>
+        </div>
       </div>
 
       {status === 'live' && <span className="live-badge room-live">● LIVE</span>}
       {status === 'live' && muted && (
         <button className="unmute" onClick={() => setMuted(false)}>🔊 Tap for sound</button>
       )}
+
+      <Marquee event={marqueeEvent} />
+      {pk && pk.phase === 'battle' && <PKBar pk={pk} meName={host.name} meAvatar="🎥" />}
+      {pkResult && <PKResult result={pkResult} />}
+
+      <div className="fab-col">
+        <button className="fab" onClick={() => setShowShare(true)} title="Share">📤<em>Share</em></button>
+        <button className="fab fab-gift" onClick={() => setShowGifts(true)} title="Gifts">🎁<em>Gift</em></button>
+      </div>
 
       <GiftBanner banner={banner} />
       <EpicGift epic={epic} />
@@ -185,6 +220,13 @@ export default function Watch({ code }) {
         onGiftOpen={() => setShowGifts(true)}
       />
       {showGifts && <GiftTray onSend={sendGift} onClose={() => setShowGifts(false)} />}
+      {showShare && (
+        <ShareSheet
+          url={shareUrl}
+          title={`🔴 ${host.name} is LIVE on VibeLive — room ${roomCode}!`}
+          onClose={() => setShowShare(false)}
+        />
+      )}
     </div>
   )
 }
