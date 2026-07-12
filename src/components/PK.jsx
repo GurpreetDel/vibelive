@@ -34,9 +34,9 @@ export function PKBar({ pk, meName, meAvatar }) {
   )
 }
 
-export function PKResult({ result }) {
+export function PKResult({ result, onEgg }) {
   return (
-    <div className="pk-result">
+    <div className="pk-result" onClick={onEgg}>
       {result.won ? (
         <>
           <div className="pk-result-title win">🏆 VICTORY!</div>
@@ -47,6 +47,7 @@ export function PKResult({ result }) {
           <p>
             <b>{result.enemy.name}</b> is defeated! {result.punishment}
           </p>
+          <p className="pk-egg-hint">🥚 Tap anywhere to egg the loser!</p>
           <div className="confetti">
             {[...Array(26)].map((_, i) => (
               <i

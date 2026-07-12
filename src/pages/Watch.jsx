@@ -3,11 +3,12 @@ import Peer from 'peerjs'
 import { myName, colorFor } from '../lib/util.js'
 import { giftById, EPIC_GIFT_COST, MYTHIC_GIFT_COST } from '../data/demo.js'
 import { addWatched, useStore } from '../lib/store.js'
+import { playGiftFx, playEggFx } from '../lib/fx.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
-import EpicGift from '../components/EpicGift.jsx'
+import FxCanvas from '../components/FxCanvas.jsx'
 import ShareSheet from '../components/ShareSheet.jsx'
 import Marquee from '../components/Marquee.jsx'
 import { PKBar, PKResult } from '../components/PK.jsx'
@@ -25,7 +26,6 @@ export default function Watch({ code }) {
   const [showGifts, setShowGifts] = useState(false)
   const [showShare, setShowShare] = useState(false)
   const [banner, setBanner] = useState(null)
-  const [epic, setEpic] = useState(null)
   const [marqueeEvent, setMarqueeEvent] = useState(null)
   const [pk, setPk] = useState(null)
   const [pkResult, setPkResult] = useState(null)
@@ -42,13 +42,9 @@ export default function Watch({ code }) {
 
   const showGiftAnim = (g, from, count = 1) => {
     const tier = g.cost >= MYTHIC_GIFT_COST ? 'mythic' : g.cost >= EPIC_GIFT_COST ? 'epic' : null
-    if (tier) {
-      setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from, tier, count })
-      setTimeout(() => setEpic(null), tier === 'mythic' ? 4600 : 3200)
-    } else {
-      setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from })
-      setTimeout(() => setBanner(null), 2600)
-    }
+    setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from, tier })
+    setTimeout(() => setBanner(null), tier ? 3600 : 2600)
+    playGiftFx(g, count, from)
     burstHearts(Math.min(14, 6 + count), g.emoji)
     setMarqueeEvent({ id: Math.random(), text: `${g.emoji} ${from} sent ${count > 1 ? count + '× ' : ''}${g.name}!` })
   }
@@ -73,6 +69,7 @@ export default function Watch({ code }) {
         if (d.t === 'meta') setHost({ name: d.name, title: d.title })
         else if (d.t === 'chat') addMsg({ name: d.name, color: colorFor(d.name), text: String(d.text).slice(0, 200) })
         else if (d.t === 'heart') addHeart()
+        else if (d.t === 'egg') playEggFx(0.78, 0.26)
         else if (d.t === 'count') setViewers(d.n)
         else if (d.t === 'gift') {
           const g = giftById(d.id)
@@ -162,10 +159,12 @@ export default function Watch({ code }) {
   }
 
   const shareUrl = `${location.origin}${location.pathname}#/watch/${roomCode}`
+  const losing = pk && pk.phase === 'battle' && pk.a < pk.b
 
   return (
-    <div className="room room-v2">
+    <div className={losing ? 'room room-v2 pk-losing' : 'room room-v2'}>
       <video ref={videoRef} className="room-video" autoPlay playsInline muted={muted} />
+      {losing && <div className="pk-vignette" />}
 
       {status === 'connecting' && (
         <div className="connecting">
@@ -197,15 +196,27 @@ export default function Watch({ code }) {
 
       <Marquee event={marqueeEvent} />
       {pk && pk.phase === 'battle' && <PKBar pk={pk} meName={host.name} meAvatar="🎥" />}
-      {pkResult && <PKResult result={pkResult} />}
+      {pkResult && <PKResult result={pkResult} onEgg={() => playEggFx(0.5, 0.45)} />}
 
       <div className="fab-col">
+        {pk && pk.phase === 'battle' && (
+          <button
+            className="fab fab-egg"
+            onClick={() => {
+              playEggFx(0.78, 0.26)
+              send({ t: 'egg', name })
+            }}
+            title="Throw an egg!"
+          >
+            🥚<em>Egg</em>
+          </button>
+        )}
         <button className="fab" onClick={() => setShowShare(true)} title="Share">📤<em>Share</em></button>
         <button className="fab fab-gift" onClick={() => setShowGifts(true)} title="Gifts">🎁<em>Gift</em></button>
       </div>
 
       <GiftBanner banner={banner} />
-      <EpicGift epic={epic} />
+      <FxCanvas />
       <HeartsOverlay hearts={hearts} />
       <ChatList msgs={msgs} />
       <RoomBottomBar

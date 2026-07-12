@@ -4,11 +4,12 @@ import { generatedStreamer } from '../data/countries.js'
 import { fmt, colorFor, myName } from '../lib/util.js'
 import { useStore, toggleFollow, addWatched } from '../lib/store.js'
 import { itemById, rankById } from '../data/items.js'
+import { playGiftFx, playEggFx } from '../lib/fx.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
-import EpicGift from '../components/EpicGift.jsx'
+import FxCanvas from '../components/FxCanvas.jsx'
 import ShareSheet from '../components/ShareSheet.jsx'
 import Marquee from '../components/Marquee.jsx'
 import { PKBar, PKResult, PK_SECONDS, randPunishment } from '../components/PK.jsx'
@@ -25,18 +26,17 @@ export default function DemoRoom({ id }) {
   const [showGifts, setShowGifts] = useState(false)
   const [showShare, setShowShare] = useState(false)
   const [banner, setBanner] = useState(null)
-  const [epic, setEpic] = useState(null)
   const [marqueeEvent, setMarqueeEvent] = useState(null)
-  const [pk, setPk] = useState(null) // {enemy, a, b, sec, phase}
+  const [pk, setPk] = useState(null)
   const [pkResult, setPkResult] = useState(null)
   const [energy, setEnergy] = useState(30)
+  const [eggs, setEggs] = useState(10)
   const { hearts, addHeart, burstHearts } = useHearts()
   const msgId = useRef(0)
   const following = store.following.includes(id)
 
   const addMsg = (m) => setMsgs((prev) => [...prev.slice(-60), { ...m, id: msgId.current++ }])
 
-  /* room ambience: chat, hearts, viewers, marquee gossip */
   useEffect(() => {
     if (!s) return
     addWatched({ id: s.id, name: s.name, avatar: s.avatar })
@@ -74,13 +74,12 @@ export default function DemoRoom({ id }) {
     }
   }, [id]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* PK battle engine */
+  /* PK engine */
   useEffect(() => {
     if (!pk || pk.phase !== 'battle') return
     const t = setInterval(() => {
       setPk((p) => {
         if (!p || p.phase !== 'battle') return p
-        // enemy AI with rubber-banding: stays beatable but keeps pressure
         let gain = 20 + Math.random() * 70
         if (p.b > p.a * 1.6) gain = 4 + Math.random() * 22
         if (p.b < p.a * 0.5) gain = 45 + Math.random() * 110
@@ -90,7 +89,7 @@ export default function DemoRoom({ id }) {
           const won = p.a >= b
           setPkResult({ won, enemy: p.enemy, punishment: randPunishment() })
           addMsg({ system: true, text: won ? `🏆 ${myName()}'s side WON the PK!` : `💀 PK lost against ${p.enemy.name}…` })
-          setTimeout(() => setPkResult(null), 5200)
+          setTimeout(() => setPkResult(null), 6000)
           return null
         }
         return { ...p, b, sec }
@@ -108,8 +107,9 @@ export default function DemoRoom({ id }) {
     if (pk) return
     const enemy = pick(STREAMS.filter((x) => x.id !== id))
     setEnergy(30)
+    setEggs(10)
     setPk({ enemy, a: 0, b: 0, sec: PK_SECONDS, phase: 'battle' })
-    addMsg({ system: true, text: `⚔️ PK battle started vs ${enemy.name}! Send gifts & attacks to win!` })
+    addMsg({ system: true, text: `⚔️ PK battle started vs ${enemy.name}! Gifts, attacks & eggs decide the winner!` })
   }
 
   const addPKPoints = (n) => setPk((p) => (p && p.phase === 'battle' ? { ...p, a: p.a + n } : p))
@@ -121,16 +121,22 @@ export default function DemoRoom({ id }) {
     burstHearts(2, '⚡')
   }
 
+  const throwEgg = () => {
+    if (!pk || eggs <= 0) return
+    setEggs((e) => e - 1)
+    playEggFx(0.78, 0.26) // splat on the enemy's side of the PK bar
+    addPKPoints(40)
+    addMsg({ system: true, text: `🥚 ${myName()} egged ${pk.enemy.name}! +40` })
+  }
+
+  const losing = pk && pk.phase === 'battle' && pk.a < pk.b
+
   const sendGift = (g, count = 1) => {
     const from = myName()
     const tier = g.cost >= MYTHIC_GIFT_COST ? 'mythic' : g.cost >= EPIC_GIFT_COST ? 'epic' : null
-    if (tier) {
-      setEpic({ key: Date.now(), emoji: g.emoji, name: g.name, from, tier, count })
-      setTimeout(() => setEpic(null), tier === 'mythic' ? 4600 : 3200)
-    } else {
-      setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from })
-      setTimeout(() => setBanner(null), 2600)
-    }
+    setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from, tier })
+    setTimeout(() => setBanner(null), tier ? 3600 : 2600)
+    playGiftFx(g, count, from)
     burstHearts(Math.min(14, 6 + count), g.emoji)
     addMsg({ name: from, color: '#ffd24d', text: `sent ${count > 1 ? count + '× ' : ''}${g.name} ${g.emoji}` })
     setMarqueeEvent({ id: Math.random(), text: `${g.emoji} ${from} sent ${count > 1 ? count + '× ' : ''}${g.name} in ${s.name}'s room!` })
@@ -140,7 +146,10 @@ export default function DemoRoom({ id }) {
   const shareUrl = `${location.origin}${location.pathname}#/demo/${id}`
 
   return (
-    <div className="room room-v2" style={{ background: `linear-gradient(160deg, ${s.grad[0]}, ${s.grad[1]} 70%, #0b0614)` }}>
+    <div
+      className={losing ? 'room room-v2 pk-losing' : 'room room-v2'}
+      style={{ background: `linear-gradient(160deg, ${s.grad[0]}, ${s.grad[1]} 70%, #0b0614)` }}
+    >
       <div className="room-stage">
         <div className="stage-blob b1" />
         <div className="stage-blob b2" />
@@ -149,6 +158,7 @@ export default function DemoRoom({ id }) {
           <div className="equalizer">{[...Array(7)].map((_, i) => <span key={i} style={{ animationDelay: i * 0.13 + 's' }} />)}</div>
         ) : null}
       </div>
+      {losing && <div className="pk-vignette" />}
 
       <div className="room-top">
         <div className="host-pill">
@@ -173,21 +183,22 @@ export default function DemoRoom({ id }) {
       <span className="live-badge room-live">● {s.g === 'F' ? "She's" : "He's"} LIVE</span>
       <Marquee event={marqueeEvent} />
       {pk && pk.phase === 'battle' && <PKBar pk={pk} meName={myName()} meAvatar={store.avatar} />}
-      {pkResult && <PKResult result={pkResult} />}
+      {pkResult && <PKResult result={pkResult} onEgg={() => playEggFx(0.5, 0.45)} />}
 
       <div className="fab-col">
         {!pk && <button className="fab fab-pk" onClick={startPK} title="Start PK battle">⚔️<em>PK</em></button>}
         {pk && pk.phase === 'battle' && (
-          <button className="fab fab-attack" onClick={attack} title="Free attack">
-            ⚡<em>{energy}</em>
-          </button>
+          <>
+            <button className="fab fab-attack" onClick={attack} title="Free attack">⚡<em>{energy}</em></button>
+            <button className="fab fab-egg" onClick={throwEgg} title="Throw an egg!">🥚<em>{eggs}</em></button>
+          </>
         )}
         <button className="fab" onClick={() => setShowShare(true)} title="Share">📤<em>Share</em></button>
         <button className="fab fab-gift" onClick={() => setShowGifts(true)} title="Gifts">🎁<em>Gift</em></button>
       </div>
 
       <GiftBanner banner={banner} />
-      <EpicGift epic={epic} />
+      <FxCanvas />
       <HeartsOverlay hearts={hearts} />
       <ChatList msgs={msgs} />
       <RoomBottomBar
