@@ -5,6 +5,7 @@ import { fmt, colorFor, myName } from '../lib/util.js'
 import { useStore, toggleFollow, addWatched } from '../lib/store.js'
 import { itemById, rankById } from '../data/items.js'
 import { playGiftFx, playEggFx } from '../lib/fx.js'
+import { giftSound, eggSound, victorySound, defeatSound, soundEnabled, toggleSound } from '../lib/sound.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
@@ -31,6 +32,7 @@ export default function DemoRoom({ id }) {
   const [pkResult, setPkResult] = useState(null)
   const [energy, setEnergy] = useState(30)
   const [eggs, setEggs] = useState(10)
+  const [snd, setSnd] = useState(soundEnabled())
   const { hearts, addHeart, burstHearts } = useHearts()
   const msgId = useRef(0)
   const following = store.following.includes(id)
@@ -88,6 +90,8 @@ export default function DemoRoom({ id }) {
         if (sec <= 0) {
           const won = p.a >= b
           setPkResult({ won, enemy: p.enemy, punishment: randPunishment() })
+          if (won) victorySound()
+          else defeatSound()
           addMsg({ system: true, text: won ? `🏆 ${myName()}'s side WON the PK!` : `💀 PK lost against ${p.enemy.name}…` })
           setTimeout(() => setPkResult(null), 6000)
           return null
@@ -125,20 +129,23 @@ export default function DemoRoom({ id }) {
     if (!pk || eggs <= 0) return
     setEggs((e) => e - 1)
     playEggFx(0.78, 0.26) // splat on the enemy's side of the PK bar
+    eggSound()
     addPKPoints(40)
     addMsg({ system: true, text: `🥚 ${myName()} egged ${pk.enemy.name}! +40` })
   }
 
   const losing = pk && pk.phase === 'battle' && pk.a < pk.b
 
-  const sendGift = (g, count = 1) => {
+  const sendGift = (g, count = 1, luckyWin = 0) => {
     const from = myName()
     const tier = g.cost >= MYTHIC_GIFT_COST ? 'mythic' : g.cost >= EPIC_GIFT_COST ? 'epic' : null
     setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from, tier })
     setTimeout(() => setBanner(null), tier ? 3600 : 2600)
     playGiftFx(g, count, from)
+    giftSound(g, from)
     burstHearts(Math.min(14, 6 + count), g.emoji)
     addMsg({ name: from, color: '#ffd24d', text: `sent ${count > 1 ? count + '× ' : ''}${g.name} ${g.emoji}` })
+    if (luckyWin > 0) addMsg({ system: true, entry: true, text: `🍀 LUCKY! ${from} won 🪙 ${fmt(luckyWin)} back!` })
     setMarqueeEvent({ id: Math.random(), text: `${g.emoji} ${from} sent ${count > 1 ? count + '× ' : ''}${g.name} in ${s.name}'s room!` })
     addPKPoints(g.cost * count)
   }
@@ -193,6 +200,9 @@ export default function DemoRoom({ id }) {
             <button className="fab fab-egg" onClick={throwEgg} title="Throw an egg!">🥚<em>{eggs}</em></button>
           </>
         )}
+        <button className="fab" onClick={() => setSnd(toggleSound())} title="Gift sounds">
+          {snd ? '🔊' : '🔇'}<em>Sound</em>
+        </button>
         <button className="fab" onClick={() => setShowShare(true)} title="Share">📤<em>Share</em></button>
         <button className="fab fab-gift" onClick={() => setShowGifts(true)} title="Gifts">🎁<em>Gift</em></button>
       </div>

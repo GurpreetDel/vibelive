@@ -4,6 +4,8 @@ import { randCode, myName, setMyName, colorFor, watchUrl } from '../lib/util.js'
 import { giftById, EPIC_GIFT_COST, MYTHIC_GIFT_COST, STREAMS } from '../data/demo.js'
 import { addBeans, update, useStore } from '../lib/store.js'
 import { playGiftFx, playEggFx } from '../lib/fx.js'
+import { giftSound, eggSound, victorySound, defeatSound, soundEnabled, toggleSound } from '../lib/sound.js'
+import { fmt } from '../lib/util.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftBanner from '../components/GiftBanner.jsx'
@@ -32,6 +34,12 @@ export default function GoLive() {
   const [showShare, setShowShare] = useState(false)
   const [pk, setPk] = useState(null)
   const [pkResult, setPkResult] = useState(null)
+  const [snd, setSnd] = useState(soundEnabled())
+  const [sessionBeans, setSessionBeans] = useState(0)
+  const [goal, setGoal] = useState(5000)
+  const [topGifter, setTopGifter] = useState(null)
+  const giftersRef = useRef(new Map())
+  const goalRef = useRef(5000)
   const { hearts, addHeart, burstHearts } = useHearts()
 
   const videoRef = useRef(null)
@@ -84,8 +92,26 @@ export default function GoLive() {
     setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from, tier })
     setTimeout(() => setBanner(null), tier ? 3600 : 2600)
     playGiftFx(g, count, from)
+    giftSound(g, from)
     burstHearts(Math.min(14, 6 + count), g.emoji)
     setMarqueeEvent({ id: Math.random(), text: `${g.emoji} ${from} sent ${count > 1 ? count + '× ' : ''}${g.name}!` })
+  }
+
+  const trackGifter = (from, amount) => {
+    const total = (giftersRef.current.get(from) || 0) + amount
+    giftersRef.current.set(from, total)
+    const top = [...giftersRef.current.entries()].sort((a, b) => b[1] - a[1])[0]
+    setTopGifter({ name: top[0], total: top[1] })
+    setSessionBeans((prev) => {
+      const nb = prev + amount
+      if (prev < goalRef.current && nb >= goalRef.current) {
+        addMsg({ system: true, entry: true, text: `🎯 Bean goal ${fmt(goalRef.current)} reached! New goal: ${fmt(goalRef.current * 2)}` })
+        playGiftFx({ id: 'goal', emoji: '🎯', cost: 0, fx: 'luckyrain' }, 1, '')
+        goalRef.current *= 2
+        setGoal(goalRef.current)
+      }
+      return nb
+    })
   }
 
   const addPKPoints = (n) => {
@@ -106,6 +132,7 @@ export default function GoLive() {
       broadcast(d, conn.peer)
     } else if (d.t === 'egg') {
       playEggFx(0.78, 0.26)
+      eggSound()
       addPKPoints(15)
       addMsg({ system: true, text: `🥚 ${d.name || 'A viewer'} threw an egg! +15` })
       broadcast(d, conn.peer)
@@ -115,6 +142,7 @@ export default function GoLive() {
       const n = Math.max(1, Math.min(99, d.n || 1))
       addBeans(g.cost * n)
       addPKPoints(g.cost * n)
+      trackGifter(d.name || 'Viewer', g.cost * n)
       showGiftAnim(g, d.name, n)
       addMsg({ name: d.name, color: colorFor(d.name), text: `sent ${n > 1 ? n + '× ' : ''}${g.name} ${g.emoji}` })
       broadcast(d, conn.peer)
@@ -187,6 +215,8 @@ export default function GoLive() {
         pkRef.current = null
         setPk(null)
         setPkResult(result)
+        if (won) victorySound()
+        else defeatSound()
         broadcast({ t: 'pk-end', won, enemy: result.enemy, punishment: result.punishment })
         addMsg({ system: true, text: won ? '🏆 WE WON THE PK!' : `💀 PK lost to ${result.enemy.name}…` })
         setTimeout(() => setPkResult(null), 5200)
@@ -198,9 +228,10 @@ export default function GoLive() {
   }
 
   // Host sends a gift in their own room: viewers see it too (coins already spent by the tray)
-  const hostSendGift = (g, count = 1) => {
+  const hostSendGift = (g, count = 1, luckyWin = 0) => {
     showGiftAnim(g, name, count)
     addMsg({ name, color: '#ffd24d', text: `sent ${count > 1 ? count + '× ' : ''}${g.name} ${g.emoji}` })
+    if (luckyWin > 0) addMsg({ system: true, entry: true, text: `🍀 LUCKY! You won 🪙 ${fmt(luckyWin)} back!` })
     addPKPoints(g.cost * count)
     broadcast({ t: 'gift', id: g.id, name, n: count })
   }
@@ -297,6 +328,14 @@ export default function GoLive() {
             <button onClick={() => setShowShare(true)}>📤 Share</button>
           </div>
 
+          <div className="goal-bar" title="Bean goal">
+            <div className="goal-fill" style={{ width: `${Math.min(100, (sessionBeans / goal) * 100)}%` }} />
+            <span>🎯 {fmt(sessionBeans)} / {fmt(goal)} beans</span>
+          </div>
+          {topGifter && (
+            <div className="top-gifter">👑 Top gifter: <b>{topGifter.name}</b> · 🪙 {fmt(topGifter.total)}</div>
+          )}
+
           <Marquee event={marqueeEvent} />
           {pk && pk.phase === 'battle' && <PKBar pk={pk} meName={name} meAvatar={store.avatar} />}
           {pkResult && <PKResult result={pkResult} onEgg={() => playEggFx(0.5, 0.45)} />}
@@ -316,6 +355,9 @@ export default function GoLive() {
                 🥚<em>Egg</em>
               </button>
             )}
+            <button className="fab" onClick={() => setSnd(toggleSound())} title="Gift sounds">
+              {snd ? '🔊' : '🔇'}<em>Sound</em>
+            </button>
             <button className="fab" onClick={() => setShowShare(true)} title="Share">📤<em>Share</em></button>
             <button className="fab fab-gift" onClick={() => setShowGifts(true)} title="Send a gift">🎁<em>Gift</em></button>
           </div>

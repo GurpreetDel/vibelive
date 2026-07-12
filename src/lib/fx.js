@@ -900,9 +900,36 @@ Object.assign(FxEngine.prototype, {
       if (count > 1) this.burst(this.w / 2, this.h * 0.45, 18, { color: '#ff8fb8' })
       return
     }
+    if (d.fx === 'luckyrain') {
+      this.coinRain({ n: 44 })
+      return
+    }
+    if (d.fx === 'mystery') {
+      this.zoom({ emoji: '🎁', dur: 1.6, size: 150 })
+      setTimeout(() => {
+        const roll = Math.random()
+        if (roll < 0.3) this.carRun(['lambo', 'ferrari', 'rolls', 'bugatti'][Math.floor(Math.random() * 4)])
+        else if (roll < 0.55) this.dragon({ emoji: '🐉', golden: Math.random() < 0.5 })
+        else if (roll < 0.8) {
+          this.fireworks({ bursts: 4 })
+          this.coinRain({ n: 26 })
+        } else this.lightning({})
+      }, 1500)
+      return
+    }
+    if (d.fx === 'universe') {
+      this.beams({ dur: 5 })
+      this.fireworks({ bursts: 7, dur: 4 })
+      this.swirl({ dur: 4.5 })
+      this.coinRain({ n: 40 })
+      this.lightning({})
+      this.zoom({ emoji: d.emoji, dur: 5, size: 210 })
+      setTimeout(() => this.dragon({ emoji: '🐲', golden: true }), 1500)
+      return
+    }
     if (d.fx === 'dragon') {
       this.beams({ color: '255, 140, 40' })
-      this.dragon({ emoji: d.emoji, golden: d.id === 'goldendragon' })
+      this.dragon({ emoji: d.emoji, golden: d.id === 'goldendragon' || d.id === 'dragonemperor' })
       if (count > 1) this.dragon({ emoji: d.emoji, golden: d.id === 'goldendragon', dur: 4.9 })
       return
     }

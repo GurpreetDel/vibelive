@@ -2,8 +2,11 @@ import { useState } from 'react'
 import { GIFT_CATEGORIES } from '../data/demo.js'
 import { useStore, spendCoins, addCoins } from '../lib/store.js'
 import { fmt } from '../lib/util.js'
+import { luckySound } from '../lib/sound.js'
+import { playGiftFx } from '../lib/fx.js'
 
 const COMBOS = [1, 10, 99]
+const LUCKY_MULTS = [0, 0, 0, 0.5, 1.5, 2, 3, 5, 10, 50, 100] // weighted roll table
 
 export default function GiftTray({ onSend, onClose }) {
   const { coins } = useStore()
@@ -23,7 +26,17 @@ export default function GiftTray({ onSend, onClose }) {
       setTimeout(() => setShake(false), 500)
       return
     }
-    onSend(sel, combo)
+    let luckyWin = 0
+    if (sel.lucky) {
+      const mult = LUCKY_MULTS[Math.floor(Math.random() * LUCKY_MULTS.length)]
+      luckyWin = Math.round(sel.cost * combo * mult)
+      if (luckyWin > 0) {
+        addCoins(luckyWin)
+        luckySound()
+        setTimeout(() => playGiftFx({ id: 'lucky', emoji: '🪙', cost: 0, fx: 'luckyrain' }, 1, ''), 500)
+      }
+    }
+    onSend(sel, combo, luckyWin)
     onClose()
   }
 
@@ -55,6 +68,7 @@ export default function GiftTray({ onSend, onClose }) {
               <span className="gift-emoji">{g.emoji}</span>
               <span className="gift-name">{g.name}</span>
               <span className="gift-cost">🪙{fmt(g.cost)}</span>
+              {g.lucky && <span className="gift-lucky">🍀 ×{g.lucky}</span>}
             </button>
           ))}
         </div>

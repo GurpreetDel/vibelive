@@ -4,6 +4,8 @@ import { myName, colorFor } from '../lib/util.js'
 import { giftById, EPIC_GIFT_COST, MYTHIC_GIFT_COST } from '../data/demo.js'
 import { addWatched, useStore } from '../lib/store.js'
 import { playGiftFx, playEggFx } from '../lib/fx.js'
+import { giftSound, eggSound, victorySound, defeatSound, soundEnabled, toggleSound } from '../lib/sound.js'
+import { fmt } from '../lib/util.js'
 import ChatList from '../components/ChatList.jsx'
 import HeartsOverlay, { useHearts } from '../components/HeartsOverlay.jsx'
 import GiftTray from '../components/GiftTray.jsx'
@@ -29,6 +31,7 @@ export default function Watch({ code }) {
   const [marqueeEvent, setMarqueeEvent] = useState(null)
   const [pk, setPk] = useState(null)
   const [pkResult, setPkResult] = useState(null)
+  const [snd, setSnd] = useState(soundEnabled())
   const [input, setInput] = useState('')
   const { hearts, addHeart, burstHearts } = useHearts()
 
@@ -45,6 +48,7 @@ export default function Watch({ code }) {
     setBanner({ key: Date.now(), emoji: g.emoji, name: count > 1 ? `${g.name} ×${count}` : g.name, from, tier })
     setTimeout(() => setBanner(null), tier ? 3600 : 2600)
     playGiftFx(g, count, from)
+    giftSound(g, from)
     burstHearts(Math.min(14, 6 + count), g.emoji)
     setMarqueeEvent({ id: Math.random(), text: `${g.emoji} ${from} sent ${count > 1 ? count + '× ' : ''}${g.name}!` })
   }
@@ -69,7 +73,10 @@ export default function Watch({ code }) {
         if (d.t === 'meta') setHost({ name: d.name, title: d.title })
         else if (d.t === 'chat') addMsg({ name: d.name, color: colorFor(d.name), text: String(d.text).slice(0, 200) })
         else if (d.t === 'heart') addHeart()
-        else if (d.t === 'egg') playEggFx(0.78, 0.26)
+        else if (d.t === 'egg') {
+          playEggFx(0.78, 0.26)
+          eggSound()
+        }
         else if (d.t === 'count') setViewers(d.n)
         else if (d.t === 'gift') {
           const g = giftById(d.id)
@@ -85,6 +92,8 @@ export default function Watch({ code }) {
         } else if (d.t === 'pk-end') {
           setPk(null)
           setPkResult({ won: d.won, enemy: d.enemy, punishment: d.punishment })
+          if (d.won) victorySound()
+          else defeatSound()
           setTimeout(() => setPkResult(null), 5200)
         } else if (d.t === 'end') setStatus('ended')
       })
@@ -152,10 +161,11 @@ export default function Watch({ code }) {
 
   const send = (data) => connRef.current?.open && connRef.current.send(data)
 
-  const sendGift = (g, count = 1) => {
+  const sendGift = (g, count = 1, luckyWin = 0) => {
     send({ t: 'gift', id: g.id, name, n: count })
     showGiftAnim(g, name, count)
     addMsg({ name, color: '#ffd24d', text: `sent ${count > 1 ? count + '× ' : ''}${g.name} ${g.emoji}` })
+    if (luckyWin > 0) addMsg({ system: true, entry: true, text: `🍀 LUCKY! You won 🪙 ${fmt(luckyWin)} back!` })
   }
 
   const shareUrl = `${location.origin}${location.pathname}#/watch/${roomCode}`
@@ -211,6 +221,9 @@ export default function Watch({ code }) {
             🥚<em>Egg</em>
           </button>
         )}
+        <button className="fab" onClick={() => setSnd(toggleSound())} title="Gift sounds">
+          {snd ? '🔊' : '🔇'}<em>Sound</em>
+        </button>
         <button className="fab" onClick={() => setShowShare(true)} title="Share">📤<em>Share</em></button>
         <button className="fab fab-gift" onClick={() => setShowGifts(true)} title="Gifts">🎁<em>Gift</em></button>
       </div>
