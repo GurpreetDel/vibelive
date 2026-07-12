@@ -49,15 +49,36 @@ export const GIFT_CATEGORIES = [
     ],
   },
   {
+    id: 'face',
+    name: '🎭 Face Magic',
+    gifts: [
+      { id: 'kiss', emoji: '💋', name: 'Kiss', cost: 99, fx: 'face-kiss' },
+      { id: 'teddy', emoji: '🧸', name: 'Teddy Kiss', cost: 199, fx: 'face-teddy' },
+      { id: 'eggprank', emoji: '🥚', name: 'Egg Prank', cost: 299, fx: 'face-egg' },
+      { id: 'clownnose', emoji: '🤡', name: 'Clown Nose', cost: 399, fx: 'face-clown' },
+      { id: 'crownme', emoji: '👑', name: 'Crown Me', cost: 2999, fx: 'face-crown' },
+    ],
+  },
+  {
+    id: 'cars',
+    name: '🏎️ Supercars',
+    gifts: [
+      { id: 'car', emoji: '🏎️', name: 'Porsche 911', cost: 1500, svga: '/fx/porsche.svga' },
+      { id: 'mercedes', emoji: '🚘', name: 'Mercedes-Benz', cost: 8888, fx: 'car:mercedes' },
+      { id: 'ferrari', emoji: '🏎️', name: 'Ferrari SF90', cost: 18888, fx: 'car:ferrari' },
+      { id: 'lambo', emoji: '🏎️', name: 'Lamborghini', cost: 25888, fx: 'car:lambo' },
+      { id: 'rolls', emoji: '🚙', name: 'Rolls-Royce', cost: 58888, fx: 'car:rolls' },
+      { id: 'bugatti', emoji: '🏎️', name: 'Bugatti Chiron', cost: 128888, fx: 'car:bugatti' },
+    ],
+  },
+  {
     id: 'luxury',
     name: '💎 Luxury',
     gifts: [
-      { id: 'teddy', emoji: '🧸', name: 'Teddy', cost: 199 },
       { id: 'perfume', emoji: '🌺', name: 'Perfume', cost: 299 },
       { id: 'ring', emoji: '💍', name: 'Diamond Ring', cost: 500 },
       { id: 'handbag', emoji: '👜', name: 'Handbag', cost: 777 },
       { id: 'watch', emoji: '⌚', name: 'Gold Watch', cost: 888 },
-      { id: 'car', emoji: '🏎️', name: 'Super Car', cost: 1500, svga: '/fx/porsche.svga' },
       { id: 'peacock', emoji: '🦚', name: 'Peacock', cost: 2500 },
       { id: 'lion', emoji: '🦁', name: 'Lion', cost: 2999 },
       { id: 'plane', emoji: '✈️', name: 'Private Jet', cost: 3999 },
