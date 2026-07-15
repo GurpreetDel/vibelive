@@ -1211,6 +1211,59 @@ input::placeholder { color: var(--muted); }
 .svga-host.on { opacity: 1; }
 .svga-host canvas { width: 100% !important; height: 100% !important; }
 
+/* ---------- Royal Cat 3D gift takeover ---------- */
+.royalcat-fx {
+  position: absolute; inset: 0; z-index: 8;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  pointer-events: none;
+  animation: rcfx-in 6.5s ease forwards;
+}
+.royalcat-stage {
+  position: relative;
+  width: min(78vw, 400px); height: min(52vh, 420px);
+  filter: drop-shadow(0 0 44px rgba(255, 210, 77, 0.6));
+}
+.royalcat-fallback {
+  width: 100%; height: 100%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 130px;
+  animation: rc-fallbob 2s ease-in-out infinite;
+}
+.royalcat-crown {
+  position: absolute; top: -4px; left: 50%;
+  font-size: 52px;
+  text-shadow: 0 0 30px rgba(255, 210, 77, 0.9);
+  animation: rc-crownbob 1.6s ease-in-out infinite;
+}
+.royalcat-title {
+  margin-top: -4px;
+  display: flex; flex-direction: column; align-items: center; gap: 3px;
+  font-size: 26px; font-weight: 900; letter-spacing: 5px;
+  background: linear-gradient(90deg, #ffd24d, #fff3b0, #ffd24d);
+  -webkit-background-clip: text; background-clip: text;
+  color: transparent; -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 4px 26px rgba(255, 210, 77, 0.55));
+}
+.royalcat-from {
+  font-size: 13px; font-weight: 700; letter-spacing: 1px;
+  color: #ffe9a8; -webkit-text-fill-color: #ffe9a8;
+}
+@keyframes rcfx-in {
+  0% { opacity: 0; transform: scale(0.6); }
+  6% { opacity: 1; transform: scale(1.06); }
+  10% { transform: scale(1); }
+  88% { opacity: 1; }
+  100% { opacity: 0; transform: scale(1.04) translateY(-20px); }
+}
+@keyframes rc-crownbob {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(-10px); }
+}
+@keyframes rc-fallbob {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
 /* ---------- PK losing: face turns red ---------- */
 .pk-losing .room-video {
   filter: sepia(0.25) saturate(1.9) hue-rotate(-22deg) brightness(0.92);

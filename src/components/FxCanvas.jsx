@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import SVGA from 'svgaplayerweb'
 import { FxEngine } from '../lib/fx.js'
 import { FaceTracker, faceAnchor } from '../lib/face.js'
+import RoyalCatFx from './RoyalCatFx.jsx'
 
 /* Full-room effects layer: canvas particle engine + SVGA gift-animation player
    + AR face tracking for face-anchored gifts (teddy kiss, crown, egg, clown).
@@ -98,6 +99,7 @@ export default function FxCanvas() {
     <div className="fx-layer" aria-hidden="true">
       <canvas ref={canvasRef} className="fx-canvas" />
       <div ref={svgaHostRef} className="svga-host" />
+      <RoyalCatFx />
     </div>
   )
 }

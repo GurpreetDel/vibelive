@@ -50,6 +50,7 @@ export const GIFT_CATEGORIES = [
       { id: 'rocket', emoji: '🚀', name: 'Rocket', cost: 100, svga: '/fx/rocket.svga' },
       { id: 'loveletter', emoji: '💌', name: 'Love Letter', cost: 150, svga: '/fx/heart.svga' },
       { id: 'fireworks', emoji: '🎆', name: 'Fireworks', cost: 250, sound: 'explosion' },
+      { id: 'royalcat', emoji: '👑🐱', name: 'Royal Cat', cost: 9999, fx: 'royalcat', sound: 'fanfare' },
     ],
   },
   {

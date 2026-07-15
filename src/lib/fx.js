@@ -900,6 +900,13 @@ Object.assign(FxEngine.prototype, {
       if (count > 1) this.burst(this.w / 2, this.h * 0.45, 18, { color: '#ff8fb8' })
       return
     }
+    if (d.fx === 'royalcat') {
+      // 3D model takeover is rendered by RoyalCatFx; canvas adds royal ambience
+      this.beams({ color: '255, 210, 77', dur: 5 })
+      this.fireworks({ bursts: 5, dur: 3.5 })
+      this.coinRain({ n: 30 })
+      return
+    }
     if (d.fx === 'luckyrain') {
       this.coinRain({ n: 44 })
       return
